@@ -111,10 +111,13 @@ def f(q):
     -------
     r : float 3x1 
         Effector (x,y,z) position
+    
 
     """
-    t = dhs2T([72, 0, 0, 0, 136.6], q, [0, 155, 135, 80.5, 136.66],[np.pi/2, 0, 0, 0, np.pi/2])
-    
+    q[1] += np.pi/2
+    q[3] += np.pi/2
+
+    t = dhs2T([33, 155, 135, 0, 9.5], [147, 0, 0, 0, 222.16], q, [np.pi/2, 0, 0, np.pi/2, 0])
     r = t[0:3,3]
     
     return r
@@ -349,4 +352,4 @@ def q2torque( q, dq, ddq , manipulator ):
     
     return tau
 
-print(f([0,0,0,0,0,0]))
+print(f([0,0,0,0,0]))
