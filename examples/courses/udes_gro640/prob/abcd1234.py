@@ -47,7 +47,27 @@ def dh2T( r , d , theta, alpha ):
     ###################
     # Votre code ici
     ###################
+    T[0, 0] = np.cos(theta)
+    T[0, 1] = -np.sin(theta) * np.cos(alpha)
+    T[0, 2] = np.sin(theta) * np.sin(alpha)
+    T[0, 3] = r * np.cos(theta)
     
+    T[1, 0] = np.sin(theta)
+    T[1, 1] = np.cos(theta) * np.cos(alpha)
+    T[1, 2] = -np.cos(theta) * np.sin(alpha)
+    T[1, 3] = r * np.sin(theta)
+    
+    T[2, 0] = 0
+    T[2, 1] = np.sin(alpha)
+    T[2, 2] = np.cos(alpha)
+    T[2, 3] = d
+    
+    T[3, 0] = 0
+    T[3, 1] = 0
+    T[3, 2] = 0
+    T[3, 3] = 1
+    
+
     return T
 
 
@@ -70,12 +90,10 @@ def dhs2T( r , d , theta, alpha ):
               Matrice de transformation totale de l'outil
 
     """
-    
-    WTT = np.zeros((4,4))
-    
-    ###################
-    # Votre code ici
-    ###################
+    WTT = np.identity(4)
+    for i in range(len(r)):
+        WTT = WTT @ dh2T(r[i], d[i], theta[i], alpha[i])
+        
     
     return WTT
 
@@ -95,11 +113,9 @@ def f(q):
         Effector (x,y,z) position
 
     """
-    r = np.zeros((3,1))
+    t = dhs2T([72, 0, 0, 0, 136.6], q, [0, 155, 135, 80.5, 136.66],[np.pi/2, 0, 0, 0, np.pi/2])
     
-    ###################
-    # Votre code ici
-    ###################
+    r = t[0:3,3]
     
     return r
 
@@ -332,3 +348,5 @@ def q2torque( q, dq, ddq , manipulator ):
     
     
     return tau
+
+print(f([0,0,0,0,0,0]))

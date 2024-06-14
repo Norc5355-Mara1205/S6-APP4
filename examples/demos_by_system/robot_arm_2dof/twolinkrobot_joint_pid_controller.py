@@ -13,9 +13,14 @@ from pyro.dynamic  import manipulator
 ###############################################################################
 
 torque_controlled_robot      = manipulator.TwoLinkManipulator()
+torque_controlled_robot.l1= 4.0
+torque_controlled_robot.l2 = 3.0
+torque_controlled_robot.l_domain = 10.0
+
+torque_controlled_robot.x0 = np.array([5,0])
 
 # Target
-q_desired = np.array([0.5,0.5])
+q_desired = np.array([0,5.0])
 
 # Joint PID
 
