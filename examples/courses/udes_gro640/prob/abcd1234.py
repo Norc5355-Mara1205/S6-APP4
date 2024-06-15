@@ -131,13 +131,9 @@ class CustomPositionController( EndEffectorKinematicController ) :
     
     ############################
     def __init__(self, manipulator ):
-        """ """
-        
         EndEffectorKinematicController.__init__( self, manipulator, 1)
-        
-        ###################################################
-        # Vos paramètres de loi de commande ici !!
-        ###################################################
+        self.gains = np.diag([5, 5])
+        self.lamda = 0.5
         
     
     #############################
@@ -160,21 +156,14 @@ class CustomPositionController( EndEffectorKinematicController ) :
         
         # Jacobian computation
         J = self.J( q )
+        J_T = J.transpose()
         
         # Ref
         r_desired   = r
         r_actual    = self.fwd_kin( q )
         
-        # Error
-        e  = r_desired - r_actual
-        
-        ################
-        dq = np.zeros( self.m )  # place-holder de bonne dimension
-        
-        ##################################
-        # Votre loi de commande ici !!!
-        ##################################
-
+        r_r = self.gains @ (r_desired - r_actual)
+        dq = np.linalg.inv(J_T @ J + self.lamda**2*np.identity(3)) @ J_T @ r_r
         
         return dq
     
