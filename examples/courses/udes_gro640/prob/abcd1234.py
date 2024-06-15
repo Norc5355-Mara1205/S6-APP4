@@ -175,11 +175,6 @@ class CustomPositionController( EndEffectorKinematicController ) :
 
         
 class CustomDrillingController( robotcontrollers.RobotController ) :
-    """ 
-
-    """
-    
-    ############################
     def __init__(self, robot_model ):
         """ """
         
@@ -208,14 +203,17 @@ class CustomDrillingController( robotcontrollers.RobotController ) :
         
         # Ref
         f_e = r
+
         
         # Feedback from sensors
         x = y
         [ q , dq ] = self.x2q( x )
+        forces = np.array([0,0,-200])
         
         # Robot model
         r = self.robot_model.forward_kinematic_effector( q ) # End-effector actual position
         J = self.robot_model.J( q )      # Jacobian matrix
+        J_T = J.transpose()
         g = self.robot_model.g( q )      # Gravity vector
         H = self.robot_model.H( q )      # Inertia matrix
         C = self.robot_model.C( q , dq ) # Coriolis matrix
@@ -223,8 +221,16 @@ class CustomDrillingController( robotcontrollers.RobotController ) :
         ##################################
         # Votre loi de commande ici !!!
         ##################################
+
+        r_d = np.array([0.25, 0.25, 0.2])
+        gains = np.diag([2, 10, 2])
+        e = r_d - r
+        e_lim = 0.005
         
-        u = np.zeros(self.m)  # place-holder de bonne dimension
+        # if np.abs(e[0]) > e_lim or np.abs(e[1]) > e_lim:
+        u = J_T @ (gains @ e)
+        # else:
+        #     u = J_T @ forces
         
         return u
         
@@ -255,6 +261,7 @@ def goal2r( r_0 , r_f , t_f ):
     """
     # Time discretization
     l = 1000 # nb of time steps
+    t = np.linspace(0,t_f,l)
     
     # Number of DoF for the effector only
     m = 3
@@ -266,7 +273,15 @@ def goal2r( r_0 , r_f , t_f ):
     #################################
     # Votre code ici !!!
     ##################################
+    a0 = r_0
+    a1 = 0
+    a2 = 3/(t_f**2) 
+    a3 = -2/(t_f**3)
     
+    for i in range(m):
+        r[i,:] = a0[i]+a1*t+a2*t**2+a3*t**3
+        dr[i, :] = a1+2*a2*t+3*a3*t**2
+        ddr[i, :] = 2*a2+6*a3*t
     
     return r, dr, ddr
 
@@ -303,6 +318,9 @@ def r2q( r, dr, ddr , manipulator ):
     #################################
     # Votre code ici !!!
     ##################################
+    
+    for i in range(l):
+        q[:,i] = manipulator.
     
     
     return q, dq, ddq

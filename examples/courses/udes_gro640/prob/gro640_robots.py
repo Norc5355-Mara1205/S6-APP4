@@ -185,7 +185,7 @@ class DrillingRobot( ThreeLinkManipulator3D ):
     3DoF Robot manipulator
     Full dynamic model
     """
-    
+
     ############################
     def __init__(self):
         """ """
