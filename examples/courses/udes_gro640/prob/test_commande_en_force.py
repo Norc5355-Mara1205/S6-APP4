@@ -10,7 +10,7 @@ import matplotlib
 
 from gro640_robots import DrillingRobot
 from gro640_robots import DrillingRobotOnJig
-from abcd1234      import CustomDrillingController
+from abcd1234      import CustomDrillingController, FORCE, IMPEDANCE
 
 
 # Model dynamique du robot
@@ -18,7 +18,7 @@ sys = DrillingRobotOnJig()
 
 # Controller
 model = DrillingRobot()
-ctl   = CustomDrillingController( model ) # Empty do nothing controller template
+ctl   = CustomDrillingController( model, IMPEDANCE ) # Choose control type FORCE or IMPEDANCE
 
 # Closed-loop dynamic
 clsys = ctl + sys
@@ -29,7 +29,7 @@ clsys.x0 =  np.array([0,1.4,-1.3,0,0,0]) #
 
 # Simulation
 tf = 6
-n = 100001
+n = 10001
 clsys.compute_trajectory( tf, n, 'euler')
 clsys.plot_trajectory('x')
 clsys.plot_trajectory('u')

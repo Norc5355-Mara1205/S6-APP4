@@ -12,11 +12,23 @@ Fichier d'amorce pour les livrables de la problématique GRO640'
 
 """
 
+IMPEDANCE = "impedance"
+FORCE = "force"
+
 import numpy as np
 
 from pyro.control  import robotcontrollers
+from pyro.control  import nonlinear
 from pyro.control.robotcontrollers import EndEffectorPD
 from pyro.control.robotcontrollers import EndEffectorKinematicController
+from scipy.optimize import fsolve
+
+def equations(vars, l1, l2, l3, x, y, z):
+    theta1, theta2, theta3 = vars
+    eq1 = l2 * np.sin(theta2) * np.cos(theta1) + l3 * np.sin(theta3) * np.cos(theta2) * np.cos(theta1) + l3 * np.sin(theta2) * np.cos(theta3) * np.cos(theta1) - x
+    eq2 = l1 + l2 * np.cos(theta2) + l3 * np.cos(theta2) * np.cos(theta3) - l3 * np.sin(theta3) * np.sin(theta2) - y
+    eq3 = l2 * np.sin(theta2) * np.sin(theta1) + l3 * np.sin(theta2) * np.cos(theta3) * np.sin(theta1) + l3 * np.sin(theta3) * np.cos(theta2) * np.sin(theta1) - z
+    return [eq1, eq2, eq3]
 
 
 ###################
@@ -104,7 +116,7 @@ def f(q):
 
     Parameters
     ----------
-    q : float 6x1
+    q : float 5x1
         Joint space coordinates
 
     Returns
@@ -175,11 +187,16 @@ class CustomPositionController( EndEffectorKinematicController ) :
 
         
 class CustomDrillingController( robotcontrollers.RobotController ) :
-    def __init__(self, robot_model ):
+    def __init__(self, robot_model, control_type=FORCE ):
         """ """
         
         super().__init__( dof = 3 )
         
+        self.control_type = control_type
+        self.is_at_target = False
+        self.r_d = np.array([0.25, 0.25, 0.4])
+        self.kp = np.diag([10,10,10])
+        self.kd = np.diag([10,10,10])
         self.robot_model = robot_model
         
         # Label
@@ -222,15 +239,25 @@ class CustomDrillingController( robotcontrollers.RobotController ) :
         # Votre loi de commande ici !!!
         ##################################
 
-        r_d = np.array([0.25, 0.25, 0.2])
-        gains = np.diag([2, 10, 2])
-        e = r_d - r
-        e_lim = 0.005
+        u = np.array([0, 0, 0]) # placeholder
+        e = self.r_d - r
+        u_i = J.T @ ( self.kp @ (e) + self.kd @ ( - J @ dq ) ) + g
+        e_lim = 0.03
         
-        # if np.abs(e[0]) > e_lim or np.abs(e[1]) > e_lim:
-        u = J_T @ (gains @ e)
-        # else:
-        #     u = J_T @ forces
+        if not self.is_at_target:
+            if all(np.abs(x) < e_lim for x in e):
+                self.is_at_target = True
+                self.r_d = np.array([0.25, 0.25, 0.2])
+                self.kp = np.diag([50,50,50])
+                self.kd = np.diag([50,50,50])
+                print('passed')
+            else:
+                u = u_i
+        else:
+            if self.control_type is FORCE:
+                u = J_T @ forces + g
+            elif self.control_type is IMPEDANCE:
+                u = u_i
         
         return u
         
@@ -273,15 +300,16 @@ def goal2r( r_0 , r_f , t_f ):
     #################################
     # Votre code ici !!!
     ##################################
-    a0 = r_0
-    a1 = 0
-    a2 = 3/(t_f**2) 
-    a3 = -2/(t_f**3)
+
+
+    s = (3/t_f**2) * t**2 - (2/t_f**3) * t**3
+    ds = (6/t_f**2) * t - (6/t_f**3) * t**2
+    dds = (6/t_f**2) - (12/t_f**3) * t
     
     for i in range(m):
-        r[i,:] = a0[i]+a1*t+a2*t**2+a3*t**3
-        dr[i, :] = a1+2*a2*t+3*a3*t**2
-        ddr[i, :] = 2*a2+6*a3*t
+        r[i, :] = r_0[i] + s * (r_f[i] - r_0[i])
+        dr[i, :] = ds * (r_f[i] - r_0[i])
+        ddr[i, :] = dds * (r_f[i] - r_0[i])
     
     return r, dr, ddr
 
@@ -318,9 +346,27 @@ def r2q( r, dr, ddr , manipulator ):
     #################################
     # Votre code ici !!!
     ##################################
+    l1 = manipulator.l1
+    l2 = manipulator.l2
+    l3 = manipulator.l3
+
+    r1 = np.sqrt(r[0,:]**2 + (r[1,:])**2)
+    r2 = (r[2, :]*l1)
+    r3 = np.sqrt(r1**2 + r2**2)
+
+    phi1 = np.arccos((l3**2 - l1**2 - r3**2)/-2*l2*r3)
+    phi2 = np.arctan2(r2, r1)
+    phi3 = np.arccos((r3**2 - l2**2 - l3**2)/-2*l2*l3)
     
+    q[0, :] = np.pi + np.arctan2(r[0,:], r[1,:])
+    q[1, :] = np.pi/2 - (phi1 - phi2)
+    q[2, :] = np.pi - phi3
+   
     for i in range(l):
-        q[:,i] = manipulator.
+        J = manipulator.J( q[:,i] )
+        dq[:,i] = np.linalg.inv(J) @ dr[:,i]
+        ddq[:,i] = np.linalg.inv(J) @ ddr[:,i]
+
     
     
     return q, dq, ddq
@@ -355,8 +401,27 @@ def q2torque( q, dq, ddq , manipulator ):
     #################################
     # Votre code ici !!!
     ##################################
+    for i in range(l):
+  
+        q_i = q[:, i]
+        dq_i = dq[:, i]
+        ddq_i = ddq[:, i]
+        
+
+        M = manipulator.mass_matrix(q_i)
+
+        C = manipulator.coriolis_matrix(q_i, dq_i)
+        g = manipulator.gravity_vector(q_i)
+        
+
+        tau[:, i] = M @ ddq_i + C @ dq_i + g
+    
+
     
     
     return tau
 
 print(f([0,0,0,0,0]))
+
+
+
