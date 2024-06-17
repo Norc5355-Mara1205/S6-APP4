@@ -10,7 +10,7 @@ import matplotlib
 
 from gro640_robots import DrillingRobot
 from gro640_robots import DrillingRobotOnJig
-from abcd1234      import CustomDrillingController, FORCE, IMPEDANCE
+from abcd1234      import CustomDrillingController, POSITION, IMPEDANCE
 
 
 # Model dynamique du robot
