@@ -18,7 +18,7 @@ sys = DrillingRobotOnJig()
 
 # Controller
 model = DrillingRobot()
-ctl   = CustomDrillingController( model, POSITION ) # Choose control type FORCE or IMPEDANCE
+ctl   = CustomDrillingController( model, control_type=IMPEDANCE ) # Choose control type: POSITION or IMPEDANCE
 
 # Closed-loop dynamic
 clsys = ctl + sys
@@ -28,7 +28,7 @@ clsys = ctl + sys
 clsys.x0 =  np.array([0,1.4,-1.3,0,0,0]) #
 
 # Simulation
-tf = 6
+tf = 10
 n = 10001
 clsys.compute_trajectory( tf, n, 'euler')
 clsys.plot_trajectory('x')

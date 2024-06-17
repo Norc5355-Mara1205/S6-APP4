@@ -188,6 +188,7 @@ class CustomDrillingController( robotcontrollers.RobotController ) :
         self.r_d = np.array([0.25, 0.25, 0.4])
         self.kp = np.diag([10,10,10])
         self.kd = np.diag([10,10,10])
+        self.gains_pos = np.diag([1.5, 1.5, 0.5])
         self.robot_model = robot_model
         
         # Label
@@ -233,18 +234,21 @@ class CustomDrillingController( robotcontrollers.RobotController ) :
         u = np.array([0, 0, 0]) # placeholder
         e = self.r_d - r
         e_lim = 0.03
+        drilling_treshold = 0.21
         
         if not self.is_at_target:
             if all(np.abs(x) < e_lim for x in e):
                 self.is_at_target = True
-                self.r_d = np.array([0.25, 0.25, 0.2])
             else:
                 if self.control_type is IMPEDANCE:
                     u = J.T @ ( self.kp @ e + self.kd @ ( - J @ dq ) ) + g
                 elif self.control_type is POSITION:
-                    u = J.T @ (self.kp @ e) + g
+                    u = J.T @ (self.gains_pos @ e) + g
         else:
-            u = J_T @ forces + g
+            if r[2] > drilling_treshold:
+                u = J_T @ (np.diag([0.5, 0.5, 0.5]) @ forces) + g
+            else:
+                u = g
         
         return u
         
