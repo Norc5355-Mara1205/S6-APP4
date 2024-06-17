@@ -18,7 +18,7 @@ sys = DrillingRobotOnJig()
 
 # Controller
 model = DrillingRobot()
-ctl   = CustomDrillingController( model, IMPEDANCE ) # Choose control type FORCE or IMPEDANCE
+ctl   = CustomDrillingController( model, POSITION ) # Choose control type FORCE or IMPEDANCE
 
 # Closed-loop dynamic
 clsys = ctl + sys

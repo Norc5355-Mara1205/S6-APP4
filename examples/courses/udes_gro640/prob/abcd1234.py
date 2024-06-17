@@ -352,9 +352,8 @@ def r2q( r, dr, ddr , manipulator ):
     for i in range(l):
         J = manipulator.J( q[:,i] )
         dq[:,i] = np.linalg.inv(J) @ dr[:,i]
-        ddq[:,i] = np.linalg.inv(J) @ ddr[:,i]
 
-    
+    ddq = np.diff(dq)
     
     return q, dq, ddq
 
