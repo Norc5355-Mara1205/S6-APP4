@@ -13,7 +13,7 @@ Fichier d'amorce pour les livrables de la problématique GRO640'
 """
 
 IMPEDANCE = "impedance"
-FORCE = "force"
+POSITION = "position"
 
 import numpy as np
 
@@ -21,14 +21,6 @@ from pyro.control  import robotcontrollers
 from pyro.control  import nonlinear
 from pyro.control.robotcontrollers import EndEffectorPD
 from pyro.control.robotcontrollers import EndEffectorKinematicController
-from scipy.optimize import fsolve
-
-def equations(vars, l1, l2, l3, x, y, z):
-    theta1, theta2, theta3 = vars
-    eq1 = l2 * np.sin(theta2) * np.cos(theta1) + l3 * np.sin(theta3) * np.cos(theta2) * np.cos(theta1) + l3 * np.sin(theta2) * np.cos(theta3) * np.cos(theta1) - x
-    eq2 = l1 + l2 * np.cos(theta2) + l3 * np.cos(theta2) * np.cos(theta3) - l3 * np.sin(theta3) * np.sin(theta2) - y
-    eq3 = l2 * np.sin(theta2) * np.sin(theta1) + l3 * np.sin(theta2) * np.cos(theta3) * np.sin(theta1) + l3 * np.sin(theta3) * np.cos(theta2) * np.sin(theta1) - z
-    return [eq1, eq2, eq3]
 
 
 ###################
@@ -106,7 +98,6 @@ def dhs2T( r , d , theta, alpha ):
     for i in range(len(r)):
         WTT = WTT @ dh2T(r[i], d[i], theta[i], alpha[i])
         
-    
     return WTT
 
 
@@ -187,7 +178,7 @@ class CustomPositionController( EndEffectorKinematicController ) :
 
         
 class CustomDrillingController( robotcontrollers.RobotController ) :
-    def __init__(self, robot_model, control_type=FORCE ):
+    def __init__(self, robot_model, control_type=POSITION ):
         """ """
         
         super().__init__( dof = 3 )
@@ -241,23 +232,19 @@ class CustomDrillingController( robotcontrollers.RobotController ) :
 
         u = np.array([0, 0, 0]) # placeholder
         e = self.r_d - r
-        u_i = J.T @ ( self.kp @ (e) + self.kd @ ( - J @ dq ) ) + g
         e_lim = 0.03
         
         if not self.is_at_target:
             if all(np.abs(x) < e_lim for x in e):
                 self.is_at_target = True
                 self.r_d = np.array([0.25, 0.25, 0.2])
-                self.kp = np.diag([50,50,50])
-                self.kd = np.diag([50,50,50])
-                print('passed')
             else:
-                u = u_i
+                if self.control_type is IMPEDANCE:
+                    u = J.T @ ( self.kp @ e + self.kd @ ( - J @ dq ) ) + g
+                elif self.control_type is POSITION:
+                    u = J.T @ (self.kp @ e) + g
         else:
-            if self.control_type is FORCE:
-                u = J_T @ forces + g
-            elif self.control_type is IMPEDANCE:
-                u = u_i
+            u = J_T @ forces + g
         
         return u
         
@@ -407,21 +394,13 @@ def q2torque( q, dq, ddq , manipulator ):
         dq_i = dq[:, i]
         ddq_i = ddq[:, i]
         
-
         M = manipulator.mass_matrix(q_i)
-
         C = manipulator.coriolis_matrix(q_i, dq_i)
         g = manipulator.gravity_vector(q_i)
-        
 
         tau[:, i] = M @ ddq_i + C @ dq_i + g
-    
 
-    
-    
     return tau
-
-print(f([0,0,0,0,0]))
 
 
 
