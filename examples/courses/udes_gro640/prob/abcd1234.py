@@ -21,7 +21,6 @@ from pyro.control  import robotcontrollers
 from pyro.control  import nonlinear
 from pyro.control.robotcontrollers import EndEffectorPD
 from pyro.control.robotcontrollers import EndEffectorKinematicController
-from scipy.optimize import fsolve
 
 def equations(vars, l1, l2, l3, x, y, z):
     theta1, theta2, theta3 = vars
@@ -360,15 +359,15 @@ def r2q( r, dr, ddr , manipulator ):
     
     q[0, :] = np.pi + np.arctan2(r[0,:], r[1,:])
     q[1, :] = np.pi/2 - (phi1 - phi2)
-    q[2, :] = np.pi - phi3
+    q[2, :] = -np.pi - phi3
    
     for i in range(l):
         J = manipulator.J( q[:,i] )
         dq[:,i] = np.linalg.inv(J) @ dr[:,i]
-        ddq[:,i] = np.linalg.inv(J) @ ddr[:,i]
 
-    
-    
+
+
+    ddq = np.diff(dq)
     return q, dq, ddq
 
 
@@ -421,7 +420,6 @@ def q2torque( q, dq, ddq , manipulator ):
     
     return tau
 
-print(f([0,0,0,0,0]))
 
 
 
